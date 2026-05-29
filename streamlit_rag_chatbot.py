@@ -22,6 +22,8 @@ DEFAULT_HOSTED_MODEL = "llama-3.1-8b-instant"
 DEFAULT_HOSTED_BASE_URL = "https://api.groq.com/openai/v1"
 SUMMARY_QUERY = "Summarize the document with the main ideas, key facts, and important conclusions."
 SENTENCE_RE = re.compile(r"(?<=[.!?])\s+")
+THINK_RE = re.compile(r"<think>.*?</think>", re.IGNORECASE | re.DOTALL)
+OPEN_THINK_RE = re.compile(r"^\s*<think>.*?(?:</think>|$)", re.IGNORECASE | re.DOTALL)
 OLLAMA_FALLBACK_MESSAGE = (
     "Local Ollama is not available in this runtime, so I used the built-in "
     "document retrieval fallback instead."
@@ -106,6 +108,13 @@ def ask_ollama(prompt: str, model: str, host: str = "http://localhost:11434") ->
     return str(data.get("response", "")).strip()
 
 
+def clean_model_response(text: str) -> str:
+    """Remove reasoning tags some hosted models may include in responses."""
+    cleaned = THINK_RE.sub("", text)
+    cleaned = OPEN_THINK_RE.sub("", cleaned)
+    return cleaned.lstrip(" \n\r\t:.-")
+
+
 def ask_hosted_llm(prompt: str, api_key: str, base_url: str, model: str) -> str:
     """Call an OpenAI-compatible hosted chat completion endpoint."""
     if not api_key:
@@ -150,7 +159,7 @@ def ask_hosted_llm(prompt: str, api_key: str, base_url: str, model: str) -> str:
         raise HostedLLMUnavailable(HOSTED_FALLBACK_MESSAGE) from exc
 
     try:
-        return str(data["choices"][0]["message"]["content"]).strip()
+        return clean_model_response(str(data["choices"][0]["message"]["content"])).strip()
     except (KeyError, IndexError, TypeError) as exc:
         raise HostedLLMUnavailable(HOSTED_FALLBACK_MESSAGE) from exc
 

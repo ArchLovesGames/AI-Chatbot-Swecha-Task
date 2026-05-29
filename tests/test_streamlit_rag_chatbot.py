@@ -8,6 +8,7 @@ from streamlit_rag_chatbot import (
     answer_question,
     build_extractive_summary,
     build_memory_index,
+    clean_model_response,
     extract_text,
 )
 
@@ -97,3 +98,23 @@ def test_hosted_llm_uses_openai_compatible_payload(monkeypatch) -> None:
 
 def request_header(captured: dict, name: str) -> str:
     return captured.get("headers", {}).get(name, "")
+
+
+def test_clean_model_response_removes_thinking_block() -> None:
+    raw = (
+        "<think>Okay, let's start by reading through the document carefully. "
+        "This private reasoning should not be shown.</think>\n"
+        "Summary:\nThe document discusses Swecha branding."
+    )
+
+    cleaned = clean_model_response(raw)
+
+    assert "<think>" not in cleaned
+    assert "private reasoning" not in cleaned
+    assert cleaned.startswith("Summary:")
+
+
+def test_clean_model_response_removes_unclosed_thinking_block() -> None:
+    raw = "<think>Hidden reasoning that never closes"
+
+    assert clean_model_response(raw) == ""
