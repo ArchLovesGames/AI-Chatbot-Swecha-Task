@@ -1,7 +1,5 @@
 # Tiny Local LLM
 
-Has now been deployed on Streamlit. Check it here: https://ai-chatbot-swecha-task-mk2zd9y3cybe9sorzlbnvh.streamlit.app/
-NOTE: Will need to install Ollama to connect and enable the AI model
 
 A small local language-model playground you can train and run.
 
