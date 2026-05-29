@@ -1,0 +1,18 @@
+The model learned by reading many small notes.
+It learned that words often arrive in patterns.
+It learned that a sentence can begin with an idea and end with a surprise.
+
+A language model predicts the next token from the tokens that came before it.
+Small models remember short habits.
+Large models remember richer shapes.
+Every model is a mirror made of statistics.
+
+When the prompt says hello, the model looks for the paths that often follow hello.
+When the prompt asks a question, the model tries to continue in a helpful voice.
+The better the training text, the better the continuation.
+
+Build small things first.
+Make them run.
+Make them understandable.
+Then make them larger.
+
