@@ -134,7 +134,9 @@ def ask_hosted_llm(prompt: str, api_key: str, base_url: str, model: str) -> str:
         data=payload,
         headers={
             "Authorization": f"Bearer {api_key}",
+            "Accept": "application/json",
             "Content-Type": "application/json",
+            "User-Agent": "Mozilla/5.0 Streamlit-RAG-App/1.0",
         },
         method="POST",
     )

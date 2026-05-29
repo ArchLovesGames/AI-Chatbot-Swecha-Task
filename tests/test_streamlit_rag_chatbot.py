@@ -75,6 +75,7 @@ def test_hosted_llm_uses_openai_compatible_payload(monkeypatch) -> None:
         captured["timeout"] = timeout
         captured["body"] = json.loads(request.data.decode("utf-8"))
         captured["authorization"] = request.headers["Authorization"]
+        captured["headers"] = request.headers
         return FakeResponse()
 
     monkeypatch.setattr("urllib.request.urlopen", fake_urlopen)
@@ -89,4 +90,10 @@ def test_hosted_llm_uses_openai_compatible_payload(monkeypatch) -> None:
     assert answer == "Hosted answer"
     assert captured["url"] == "https://api.example.com/openai/v1/chat/completions"
     assert captured["authorization"] == "Bearer test-key"
+    assert request_header(captured, "Accept") == "application/json"
+    assert request_header(captured, "User-agent") == "Mozilla/5.0 Streamlit-RAG-App/1.0"
     assert captured["body"]["model"] == "test-model"
+
+
+def request_header(captured: dict, name: str) -> str:
+    return captured.get("headers", {}).get(name, "")
