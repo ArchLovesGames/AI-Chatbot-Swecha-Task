@@ -1,159 +1,77 @@
-# Tiny Local LLM
+# AI Chatbot Swecha Task
 
-Deployed on Streamlit: https://ai-chatbot-swecha-task-mk2zd9y3cybe9sorzlbnvh.streamlit.app/
+Deployed Streamlit app: https://ai-chatbot-swecha-task-mk2zd9y3cybe9sorzlbnvh.streamlit.app/
 
-For the public Streamlit app, use the hosted LLM mode with Streamlit Secrets.
-Local Ollama only works when running the app on the same machine as Ollama.
+This project is a Streamlit RAG chatbot. Users upload a PDF, TXT, or Markdown
+document, and the app retrieves relevant chunks from that document to answer
+questions. If the user leaves the question blank, the app returns a summary.
 
-A small local language-model playground you can train and run.
+## What document did you use and why?
 
-It includes two models:
+The sample document is `data/rag_reference.pdf`. It is a short reference note
+about retrieval augmented generation, chunking, embeddings, and hosted model
+deployment. I used it because it directly matches the concepts demonstrated by
+the app and gives predictable test questions for the RAG workflow.
 
-- `train_gpt.py` / `generate_gpt.py`: a tiny GPT-style neural Transformer.
-- `tiny_llm.py`: a dependency-free n-gram fallback that runs with only Python.
-- `rag_llm.py`: a local retrieval augmented generation layer.
+The app also supports user-uploaded documents, so the bundled PDF is mainly a
+submission artifact and demo document.
 
-## Quick Start
+## How does your chunking work?
 
-Create the environment and install PyTorch:
+The loader splits extracted document text into overlapping word chunks. The
+default chunk size is 160 words with a 35-word overlap. The overlap helps keep
+important context from being lost when an answer spans a chunk boundary.
+
+The chunking code lives in `utils/loader.py`.
+
+## Which embedding model did you use?
+
+The app uses a lightweight local TF-IDF embedding approach implemented in
+`utils/embedder.py`. Each chunk is tokenized, converted into a normalized TF-IDF
+vector, and compared with the user's query using cosine similarity.
+
+This keeps the app easy to deploy without needing a vector database or a paid
+embedding endpoint. For answer generation, the public deployment can use a
+hosted OpenAI-compatible model through Groq when `GROQ_API_KEY` is configured in
+Streamlit Secrets.
+
+## How to run locally
+
+Create and activate a virtual environment:
 
 ```bash
 python3 -m venv .venv
 .venv/bin/python -m pip install -r requirements.txt
 ```
 
-Train the neural model on the included sample corpus:
+Run the Streamlit app:
 
 ```bash
-.venv/bin/python train_gpt.py --input data/tiny_corpus.txt --steps 400
+.venv/bin/streamlit run app.py
 ```
 
-Generate text:
-
-```bash
-.venv/bin/python generate_gpt.py --prompt "The model" --tokens 300
-```
-
-Use a larger text file for better results:
-
-```bash
-.venv/bin/python train_gpt.py --input path/to/book.txt --steps 3000 --output runs/book
-.venv/bin/python generate_gpt.py --checkpoint runs/book/checkpoint.pt --prompt "Once upon" --tokens 800
-```
-
-## RAG Mode
-
-Build a local document index:
-
-```bash
-.venv/bin/python rag_llm.py index --documents docs --index rag_index.json
-```
-
-Ask a grounded question:
-
-```bash
-.venv/bin/python rag_llm.py ask "Why is RAG useful?"
-```
-
-Inspect retrieved chunks:
-
-```bash
-.venv/bin/python rag_llm.py retrieve "Transformer attention"
-```
-
-Print a RAG prompt that can be passed to a stronger generator:
-
-```bash
-.venv/bin/python rag_llm.py ask "How does this project train?" --prompt
-```
-
-Index your own notes:
-
-```bash
-.venv/bin/python rag_llm.py index --documents path/to/notes --extensions .txt,.md,.py
-```
-
-## Dependency-Free Fallback
-
-Train the n-gram model:
-
-```bash
-python3 tiny_llm.py train --input data/tiny_corpus.txt --model model.json
-```
-
-Generate text:
-
-```bash
-python3 tiny_llm.py generate --model model.json --prompt "The model" --tokens 300
-```
-
-## How It Works
-
-The neural model is a compact character-level GPT:
-
-- Token embedding + positional embedding.
-- Causal multi-head self-attention.
-- Transformer blocks with layer norm and MLPs.
-- Cross-entropy next-character training.
-- Temperature and top-k sampling for generation.
-
-The fallback model is a character-level n-gram language model:
-
-- It treats each character as a token.
-- During training, it counts which characters tend to follow each context.
-- During generation, it predicts the next character from the longest matching
-  recent context, backing off to shorter contexts when needed.
-- Temperature controls randomness. Lower values are more predictable; higher
-  values are more chaotic.
-- Top-k keeps sampling focused on the most likely next characters.
-
-Both versions show the core language-model loop: tokenize, train next-token
-prediction, save weights, and sample completions.
-
-The RAG layer adds the retrieval loop: chunk documents, index them, retrieve
-the most relevant chunks for a question, and answer with citations.
-
-## Streamlit Document Chatbot
-
-Run the upload-based chatbot:
-
-```bash
-streamlit run streamlit_rag_chatbot.py
-```
-
-Upload a PDF, TXT, or Markdown document, then either ask a question or leave the
-question box blank to get a summary.
-
-The app supports three answer engines:
-
-- Hosted LLM: best for the public Streamlit app.
-- Local Ollama: best for local demos on your own machine.
-- Extractive fallback: works without any API key.
-
-### Hosted LLM Setup
-
-The hosted mode uses an OpenAI-compatible chat-completions API. Groq is the
-default provider.
-
-In Streamlit Community Cloud, open the app settings and add these secrets:
-
-```toml
-GROQ_API_KEY = "your-groq-api-key"
-LLM_BASE_URL = "https://api.groq.com/openai/v1"
-LLM_MODEL = "llama-3.1-8b-instant"
-```
-
-For local development, copy the example secrets file:
+Optional local secrets file:
 
 ```bash
 mkdir -p .streamlit
 cp .streamlit/secrets.toml.example .streamlit/secrets.toml
 ```
 
-Then paste your real API key into `.streamlit/secrets.toml`.
+Then paste your real Groq key into `.streamlit/secrets.toml`.
 
-### Local Ollama Setup
+For local Ollama demos, choose **Local Ollama** in the sidebar and use an
+installed model such as `llama3.2`. Ollama mode only works on the same machine
+where Ollama is running.
 
-If Ollama is running locally, choose "Local Ollama" in the sidebar and use an
-installed model such as `llama3.2`. This mode will not work on Streamlit Cloud
-because the cloud server cannot access your computer's `localhost:11434`.
+## Screenshot
+
+![Working Streamlit RAG chatbot](screenshots/demo.png)
+
+## What would you improve with more time?
+
+- Add a stronger hosted embedding model for semantic retrieval.
+- Add persistent chat history per uploaded document.
+- Store document chunks in a vector database such as FAISS or Chroma.
+- Add OCR support for scanned PDFs.
+- Add clearer evaluation tests with multiple real PDFs.
+- Add source highlighting so users can see exactly where each answer came from.

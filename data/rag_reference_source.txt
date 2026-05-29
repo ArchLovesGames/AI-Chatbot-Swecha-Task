@@ -1,0 +1,23 @@
+Retrieval augmented generation, or RAG, is a pattern for building assistants
+that answer questions from supplied documents. A RAG system first loads a
+document, extracts readable text, and splits that text into chunks. Each chunk
+is converted into a searchable representation called an embedding.
+
+When a user asks a question, the app embeds the question and compares it with
+the document chunks. The most relevant chunks are retrieved and passed to the
+answering layer. This keeps answers grounded in the uploaded document instead
+of relying only on a model's memory.
+
+This project uses Streamlit for the user interface. The user uploads a PDF,
+TXT, or Markdown file, then asks a question. If the question box is left blank,
+the app summarizes the document. For retrieval, the project uses TF-IDF vectors
+and cosine similarity, which are lightweight and easy to deploy.
+
+Chunking is important because very long documents are difficult to search and
+too large to send to a language model at once. The app uses overlapping word
+chunks so important context is less likely to be cut off at chunk boundaries.
+
+For public deployment, the app can use a hosted OpenAI-compatible model through
+Groq. For local demos, it can also call Ollama on the same machine. If no model
+provider is configured, the app still returns an extractive answer using the
+retrieved chunks.

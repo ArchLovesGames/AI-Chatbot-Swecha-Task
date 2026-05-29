@@ -8,24 +8,15 @@ import os
 import re
 import urllib.error
 import urllib.request
-from dataclasses import asdict
-from pathlib import Path
-from typing import BinaryIO
 
 import streamlit as st
 
-from rag_llm import (
-    Chunk,
-    build_answer,
-    build_prompt,
-    build_vectors,
-    chunk_document,
-    retrieve,
-    tokenize,
-)
+from rag_llm import build_answer, build_prompt
+from utils.embedder import tokenize
+from utils.loader import SUPPORTED_TYPES, extract_text_from_upload
+from utils.retriever import build_index, retrieve
 
 
-SUPPORTED_TYPES = ["pdf", "txt", "md"]
 DEFAULT_OLLAMA_MODEL = "llama3.2"
 DEFAULT_HOSTED_MODEL = "llama-3.1-8b-instant"
 DEFAULT_HOSTED_BASE_URL = "https://api.groq.com/openai/v1"
@@ -62,72 +53,14 @@ def read_setting(name: str, default: str = "") -> str:
     return str(secret_value) if secret_value else default
 
 
-def extract_text_from_pdf(file_obj: BinaryIO) -> str:
-    """Extract text from a PDF upload using whichever PDF reader is installed."""
-    try:
-        from pypdf import PdfReader
-    except ImportError:
-        try:
-            from PyPDF2 import PdfReader  # type: ignore
-        except ImportError as exc:
-            raise RuntimeError("PDF support requires pypdf. Install it with `pip install pypdf`.") from exc
-
-    reader = PdfReader(file_obj)
-    pages = []
-    for page in reader.pages:
-        pages.append(page.extract_text() or "")
-    return "\n\n".join(page.strip() for page in pages if page.strip())
-
-
 def extract_text(uploaded_file) -> str:
-    """Return usable text from a Streamlit upload."""
-    suffix = Path(uploaded_file.name).suffix.lower()
-    uploaded_file.seek(0)
-
-    if suffix == ".pdf":
-        return extract_text_from_pdf(uploaded_file)
-    if suffix in {".txt", ".md"}:
-        return uploaded_file.read().decode("utf-8", errors="replace")
-
-    raise ValueError(f"Unsupported file type: {suffix}")
+    """Backward-compatible wrapper for tests and older imports."""
+    return extract_text_from_upload(uploaded_file)
 
 
 def build_memory_index(text: str, source_name: str, chunk_words: int = 160, overlap: int = 35) -> dict:
-    """Build an in-memory TF-IDF chunk index for one uploaded document."""
-    chunk_records = []
-    tokenized_chunks = []
-    for start_word, chunk_text in chunk_document(text, chunk_words=chunk_words, overlap=overlap):
-        tokens = tokenize(chunk_text)
-        if not tokens:
-            continue
-        chunk_records.append((start_word, chunk_text))
-        tokenized_chunks.append(tokens)
-
-    if not chunk_records:
-        raise ValueError("The document did not contain enough readable text to index.")
-
-    vectors, idf = build_vectors(tokenized_chunks)
-    chunks = []
-    for index, ((start_word, chunk_text), vector) in enumerate(zip(chunk_records, vectors)):
-        chunks.append(
-            Chunk(
-                id=f"upload-chunk-{index}",
-                source=source_name,
-                start_word=start_word,
-                text=chunk_text,
-                vector=vector,
-            )
-        )
-
-    return {
-        "version": 1,
-        "documents_path": source_name,
-        "chunk_words": chunk_words,
-        "overlap": overlap,
-        "extensions": SUPPORTED_TYPES,
-        "idf": idf,
-        "chunks": [asdict(chunk) for chunk in chunks],
-    }
+    """Backward-compatible wrapper for tests and older imports."""
+    return build_index(text, source_name, chunk_words=chunk_words, overlap=overlap)
 
 
 def build_extractive_summary(text: str, max_sentences: int = 5) -> str:
