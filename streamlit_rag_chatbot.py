@@ -8,9 +8,7 @@ import re
 import urllib.error
 import urllib.request
 from dataclasses import asdict
-from io import BytesIO
 from pathlib import Path
-from tempfile import NamedTemporaryFile
 from typing import BinaryIO
 
 import streamlit as st
@@ -30,6 +28,14 @@ SUPPORTED_TYPES = ["pdf", "txt", "md"]
 DEFAULT_MODEL = "llama3.2"
 SUMMARY_QUERY = "Summarize the document with the main ideas, key facts, and important conclusions."
 SENTENCE_RE = re.compile(r"(?<=[.!?])\s+")
+OLLAMA_FALLBACK_MESSAGE = (
+    "Local Ollama is not available in this runtime, so I used the built-in "
+    "document retrieval fallback instead."
+)
+
+
+class OllamaUnavailable(RuntimeError):
+    """Raised when the local Ollama server cannot answer a request."""
 
 
 def extract_text_from_pdf(file_obj: BinaryIO) -> str:
@@ -137,8 +143,8 @@ def ask_ollama(prompt: str, model: str, host: str = "http://localhost:11434") ->
     try:
         with urllib.request.urlopen(request, timeout=60) as response:
             data = json.loads(response.read().decode("utf-8"))
-    except (urllib.error.URLError, TimeoutError, json.JSONDecodeError) as exc:
-        raise RuntimeError(f"Ollama request failed: {exc}") from exc
+    except (OSError, urllib.error.URLError, TimeoutError, json.JSONDecodeError) as exc:
+        raise OllamaUnavailable(OLLAMA_FALLBACK_MESSAGE) from exc
 
     return str(data.get("response", "")).strip()
 
@@ -169,7 +175,8 @@ def main() -> None:
 
     with st.sidebar:
         st.header("Model")
-        use_ollama = st.toggle("Use Ollama if available", value=False)
+        use_ollama = st.toggle("Use local Ollama", value=False)
+        st.caption("Ollama only works when this app runs on the same machine as the Ollama server.")
         model = st.text_input("Ollama model", value=DEFAULT_MODEL)
         top_k = st.slider("Retrieved chunks", min_value=1, max_value=8, value=4)
 
@@ -203,8 +210,8 @@ def main() -> None:
                 )
                 try:
                     st.markdown(ask_ollama(prompt, model=model))
-                except RuntimeError as exc:
-                    st.warning(f"{exc} Falling back to the local extractive summary.")
+                except OllamaUnavailable as exc:
+                    st.info(str(exc))
                     st.markdown(build_extractive_summary(text))
             else:
                 st.markdown(build_extractive_summary(text))
@@ -212,8 +219,8 @@ def main() -> None:
 
         try:
             answer, results = answer_question(index, cleaned_question, use_ollama, model, top_k=top_k)
-        except RuntimeError as exc:
-            st.warning(f"{exc} Falling back to the local extractive answer.")
+        except OllamaUnavailable as exc:
+            st.info(str(exc))
             answer, results = answer_question(index, cleaned_question, False, model, top_k=top_k)
 
         st.markdown(answer)
