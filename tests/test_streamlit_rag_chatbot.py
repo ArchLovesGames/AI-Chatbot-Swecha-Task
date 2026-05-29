@@ -1,8 +1,10 @@
 from __future__ import annotations
 
+import json
 from io import BytesIO
 
 from streamlit_rag_chatbot import (
+    ask_hosted_llm,
     answer_question,
     build_extractive_summary,
     build_memory_index,
@@ -53,3 +55,38 @@ def test_question_retrieves_relevant_answer() -> None:
 
     assert results
     assert "multifactor authentication" in answer.lower()
+
+
+def test_hosted_llm_uses_openai_compatible_payload(monkeypatch) -> None:
+    captured = {}
+
+    class FakeResponse:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc, traceback):
+            return False
+
+        def read(self):
+            return json.dumps({"choices": [{"message": {"content": "Hosted answer"}}]}).encode("utf-8")
+
+    def fake_urlopen(request, timeout):
+        captured["url"] = request.full_url
+        captured["timeout"] = timeout
+        captured["body"] = json.loads(request.data.decode("utf-8"))
+        captured["authorization"] = request.headers["Authorization"]
+        return FakeResponse()
+
+    monkeypatch.setattr("urllib.request.urlopen", fake_urlopen)
+
+    answer = ask_hosted_llm(
+        "Use context [1].",
+        api_key="test-key",
+        base_url="https://api.example.com/openai/v1",
+        model="test-model",
+    )
+
+    assert answer == "Hosted answer"
+    assert captured["url"] == "https://api.example.com/openai/v1/chat/completions"
+    assert captured["authorization"] == "Bearer test-key"
+    assert captured["body"]["model"] == "test-model"

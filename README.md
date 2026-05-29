@@ -1,5 +1,9 @@
 # Tiny Local LLM
 
+Deployed on Streamlit: https://ai-chatbot-swecha-task-mk2zd9y3cybe9sorzlbnvh.streamlit.app/
+
+For the public Streamlit app, use the hosted LLM mode with Streamlit Secrets.
+Local Ollama only works when running the app on the same machine as Ollama.
 
 A small local language-model playground you can train and run.
 
@@ -118,6 +122,38 @@ streamlit run streamlit_rag_chatbot.py
 ```
 
 Upload a PDF, TXT, or Markdown document, then either ask a question or leave the
-question box blank to get a summary. The app uses the local TF-IDF retrieval
-fallback by default. If Ollama is running locally, turn on "Use Ollama if
-available" in the sidebar and choose an installed model such as `llama3.2`.
+question box blank to get a summary.
+
+The app supports three answer engines:
+
+- Hosted LLM: best for the public Streamlit app.
+- Local Ollama: best for local demos on your own machine.
+- Extractive fallback: works without any API key.
+
+### Hosted LLM Setup
+
+The hosted mode uses an OpenAI-compatible chat-completions API. Groq is the
+default provider.
+
+In Streamlit Community Cloud, open the app settings and add these secrets:
+
+```toml
+GROQ_API_KEY = "your-groq-api-key"
+LLM_BASE_URL = "https://api.groq.com/openai/v1"
+LLM_MODEL = "llama-3.1-8b-instant"
+```
+
+For local development, copy the example secrets file:
+
+```bash
+mkdir -p .streamlit
+cp .streamlit/secrets.toml.example .streamlit/secrets.toml
+```
+
+Then paste your real API key into `.streamlit/secrets.toml`.
+
+### Local Ollama Setup
+
+If Ollama is running locally, choose "Local Ollama" in the sidebar and use an
+installed model such as `llama3.2`. This mode will not work on Streamlit Cloud
+because the cloud server cannot access your computer's `localhost:11434`.

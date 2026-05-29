@@ -2,6 +2,7 @@
 __pycache__/
 *.pyc
 .DS_Store
+.streamlit/secrets.toml
 model.json
 rag_index.json
 runs/
